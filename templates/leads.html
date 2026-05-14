@@ -1,0 +1,672 @@
+{% extends "base.html" %}
+{% block title %}TG Leads — Таблица лидов{% endblock %}
+
+{% block extra_style %}
+/* ── Layout ── */
+.page-header {
+  padding: 2rem 2rem 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1.5rem;
+  margin-bottom: 0;
+}
+.page-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+.page-title span { color: var(--accent2); font-family: var(--mono); }
+.export-btns { display: flex; gap: .5rem; }
+
+/* ── Filter bar ── */
+.filter-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  align-items: center;
+}
+.filter-bar label {
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+.filter-bar input, .filter-bar select { width: auto; min-width: 120px; }
+.filter-bar .sep { flex: 1; }
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  padding: .5rem 2rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  min-height: 38px;
+  align-items: center;
+}
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  background: rgba(124,58,237,.12);
+  border: 1px solid rgba(124,58,237,.3);
+  color: #a78bfa;
+  font-family: var(--mono);
+  font-size: .7rem;
+  padding: .2rem .6rem;
+  border-radius: 2px;
+}
+.filter-tag button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  font-size: .85rem;
+  line-height: 1;
+}
+
+/* ── Table ── */
+.table-wrap {
+  overflow-x: auto;
+  padding: 0 2rem 2rem;
+}
+.leads-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: .82rem;
+}
+.leads-table th {
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding: .6rem .8rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.leads-table th:hover { color: var(--text); }
+.leads-table th .sort-icon { margin-left: .25rem; opacity: .4; }
+.leads-table th.sorted .sort-icon { opacity: 1; color: var(--accent2); }
+.leads-table td {
+  padding: .7rem .8rem;
+  border-bottom: 1px solid rgba(42,42,64,.6);
+  vertical-align: top;
+  transition: background .15s;
+}
+.leads-table tr:hover td { background: var(--surface2); }
+
+.col-score  { text-align: center; width: 80px; }
+.col-date   { width: 120px; white-space: nowrap; }
+.col-chat   { width: 130px; }
+.col-msg    { max-width: 360px; }
+.col-user   { width: 160px; }
+.col-kw     { width: 160px; }
+
+.score-badge {
+  display: inline-block;
+  width: 44px;
+  text-align: center;
+  padding: .2rem 0;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: .8rem;
+  font-weight: 700;
+}
+.score-high { background: rgba(16,185,129,.15); color: var(--green); }
+.score-mid  { background: rgba(245,158,11,.15); color: var(--yellow); }
+.score-low  { background: rgba(239,68,68,.12);  color: var(--red); }
+
+.msg-text {
+  color: var(--text);
+  line-height: 1.5;
+}
+.msg-full { display: none; }
+.msg-short { display: block; }
+.msg-toggle {
+  font-size: .7rem;
+  color: var(--accent2);
+  cursor: pointer;
+  font-family: var(--mono);
+  margin-top: .2rem;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.kw-list { display: flex; flex-wrap: wrap; gap: .25rem; }
+
+.username { font-family: var(--mono); font-size: .8rem; }
+.username a { color: var(--accent2); text-decoration: none; }
+.username a:hover { text-decoration: underline; }
+
+/* ── Bottom bar ── */
+.bottom-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .75rem 2rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: .75rem;
+  color: var(--muted);
+  position: sticky;
+  bottom: 0;
+}
+.pagination { display: flex; gap: .4rem; }
+.pagination button {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: .75rem;
+  padding: .3rem .7rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: border-color .2s;
+}
+.pagination button:hover { border-color: var(--accent); }
+.pagination button.active { border-color: var(--accent2); color: var(--accent2); }
+.pagination button:disabled { opacity: .35; cursor: default; }
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center;
+  padding: 5rem 2rem;
+  color: var(--muted);
+}
+.empty-state .big { font-size: 3rem; margin-bottom: 1rem; opacity: .3; }
+.empty-state h3 { font-size: 1.1rem; margin-bottom: .5rem; color: var(--text); }
+
+/* ── Loading overlay ── */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(12,12,18,.8);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  font-family: var(--mono);
+  font-size: .9rem;
+  color: var(--accent2);
+}
+.loading-overlay.active { display: flex; }
+.spinner {
+  animation: spin 1s linear infinite;
+  margin-right: .75rem;
+  font-size: 1.2rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .page-header { padding: 1.25rem 1rem !important; }
+  .page-title { font-size: 1.25rem; }
+  .export-btns { gap: .35rem; }
+
+  .filter-bar { padding: .75rem 1rem; gap: .5rem; }
+  .filter-bar label { font-size: .65rem; }
+  .filter-bar input, .filter-bar select { min-width: 100px; }
+
+  .active-filters { padding: .4rem 1rem; }
+
+  .table-wrap { padding: 0 .5rem 1.5rem; }
+  .leads-table { font-size: .78rem; }
+  .leads-table th, .leads-table td { padding: .5rem .55rem; }
+
+  /* Hide less critical columns on tablet */
+  .col-kw { display: none; }
+  .col-date { display: none; }
+
+  .bottom-bar { padding: .6rem 1rem; flex-direction: column; gap: .5rem; text-align: center; }
+}
+
+@media (max-width: 600px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    padding: 1rem .85rem !important;
+  }
+  .export-btns { width: 100%; }
+  .export-btns .btn { flex: 1; justify-content: center; }
+
+  .filter-bar { flex-direction: column; align-items: stretch; padding: .75rem .85rem; }
+  .filter-bar label { flex-direction: row; align-items: center; justify-content: space-between; }
+  .filter-bar label input,
+  .filter-bar label select { min-width: 0; flex: 1; margin-left: .5rem; }
+  .filter-bar .sep { display: none; }
+
+  /* Mobile: show only score, user, message */
+  .col-chat { display: none; }
+  th:nth-child(6), td:nth-child(6) { display: none; } /* niche */
+  th:nth-child(7), td:nth-child(7) { display: none; }
+
+  .leads-table th { font-size: .65rem; padding: .45rem .4rem; }
+  .leads-table td { padding: .55rem .4rem; }
+
+  .col-msg { max-width: 200px; }
+  .col-score { width: 56px; }
+  .col-user { width: 110px; font-size: .72rem; }
+
+  .pagination button { padding: .28rem .55rem; font-size: .7rem; }
+}
+{% endblock %}
+
+{% block content %}
+<div class="page-header container" style="max-width:100%;padding:1.5rem 2rem">
+  <div>
+    <p style="font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-bottom:.3rem">ТАБЛИЦА ЛИДОВ</p>
+    <h1 class="page-title">Lead <span id="totalCount">—</span> results</h1>
+  </div>
+  <div class="export-btns">
+    <button class="btn btn-secondary btn-sm" onclick="exportLeads('csv')">↓ CSV</button>
+    <button class="btn btn-cyan btn-sm" onclick="exportLeads('xlsx')">↓ Excel</button>
+    <a href="/" class="btn btn-secondary btn-sm">+ Новый скан</a>
+  </div>
+</div>
+
+<!-- Filter bar -->
+<div class="filter-bar">
+  <label>
+    Ниша
+    <select id="f-niche" onchange="applyFilters()">
+      <option value="">Все</option>
+      {% for niche in niches %}
+      <option value="{{ niche }}">{{ niche }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>
+    Score ≥
+    <input type="number" id="f-min-score" placeholder="0" min="0" max="100"
+           style="width:70px" onchange="applyFilters()" />
+  </label>
+
+  <label>
+    Ключевое слово
+    <input type="text" id="f-keyword" placeholder="поиск…"
+           style="min-width:160px" oninput="debounceFilter()" />
+  </label>
+
+  <label>
+    Дата с
+    <input type="date" id="f-date-from" onchange="applyFilters()" />
+  </label>
+
+  <label>
+    по
+    <input type="date" id="f-date-to" onchange="applyFilters()" />
+  </label>
+
+  <div class="sep"></div>
+
+  <label>
+    Показывать
+    <select id="f-per-page" onchange="applyFilters()">
+      <option value="25">25</option>
+      <option value="50" selected>50</option>
+      <option value="100">100</option>
+    </select>
+  </label>
+
+  <button class="btn btn-secondary btn-sm" onclick="resetFilters()">✕ Сброс</button>
+</div>
+
+<!-- Active filter tags -->
+<div class="active-filters" id="activeTags"></div>
+
+<!-- Table -->
+<div class="table-wrap">
+  <table class="leads-table">
+    <thead>
+      <tr>
+        <th class="col-score sorted" data-sort="final_score" onclick="setSort('final_score')">
+          Score <span class="sort-icon">▼</span>
+        </th>
+        <th class="col-user" data-sort="username" onclick="setSort('username')">
+          Пользователь <span class="sort-icon">↕</span>
+        </th>
+        <th class="col-msg">Сообщение</th>
+        <th class="col-chat" data-sort="chat_name" onclick="setSort('chat_name')">
+          Чат <span class="sort-icon">↕</span>
+        </th>
+        <th class="col-date" data-sort="message_date" onclick="setSort('message_date')">
+          Дата <span class="sort-icon">↕</span>
+        </th>
+        <th class="col-kw">Ключ. слова</th>
+        <th>Ниша</th>
+      </tr>
+    </thead>
+    <tbody id="leadsBody">
+      <tr><td colspan="7" style="text-align:center;padding:3rem;color:var(--muted);font-family:var(--mono)">
+        Загрузка…
+      </td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Bottom pagination bar -->
+<div class="bottom-bar">
+  <span id="pageInfo">—</span>
+  <div class="pagination" id="paginationEl"></div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <span class="spinner">◌</span> Загружаем лиды…
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+// ══════════════════════════════════════════════════
+//  State
+// ══════════════════════════════════════════════════
+let state = {
+  page: 1,
+  perPage: 50,
+  sort: 'final_score',
+  order: 'desc',
+  filters: {},
+};
+
+let debounceTimer = null;
+
+// ══════════════════════════════════════════════════
+//  Init
+// ══════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  // Если пришли со страницы скана с ?niche=
+  const params = new URLSearchParams(location.search);
+  const niche = params.get('niche');
+  if (niche) {
+    document.getElementById('f-niche').value = niche;
+    state.filters.niche = niche;
+  }
+  loadLeads();
+});
+
+// ══════════════════════════════════════════════════
+//  Load leads from API
+// ══════════════════════════════════════════════════
+async function loadLeads() {
+  document.getElementById('loadingOverlay').classList.add('active');
+
+  const params = new URLSearchParams({
+    page: state.page,
+    per_page: state.perPage,
+    sort: state.sort,
+    order: state.order,
+    ...state.filters,
+  });
+
+  try {
+    const resp = await fetch(`/api/leads?${params}`);
+    const data = await resp.json();
+    renderTable(data.leads);
+    renderPagination(data);
+    document.getElementById('totalCount').textContent = data.total;
+    document.getElementById('pageInfo').textContent =
+      `Показано ${Math.min((state.page-1)*state.perPage+1, data.total)}–${Math.min(state.page*state.perPage, data.total)} из ${data.total}`;
+  } catch (e) {
+    document.getElementById('leadsBody').innerHTML =
+      `<tr><td colspan="7" style="color:var(--red);text-align:center;padding:2rem;font-family:var(--mono)">
+        ✗ Ошибка загрузки: ${e.message}
+      </td></tr>`;
+  } finally {
+    document.getElementById('loadingOverlay').classList.remove('active');
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  Render table
+// ══════════════════════════════════════════════════
+function renderTable(leads) {
+  const tbody = document.getElementById('leadsBody');
+  if (!leads.length) {
+    tbody.innerHTML = `
+      <tr><td colspan="7">
+        <div class="empty-state">
+          <div class="big">◎</div>
+          <h3>Нет лидов</h3>
+          <p>Попробуйте изменить фильтры или запустить новый скан</p>
+          <a href="/" class="btn btn-primary" style="margin-top:1.5rem">+ Запустить скан</a>
+        </div>
+      </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = leads.map(lead => {
+    const scoreClass = lead.final_score >= 70 ? 'score-high'
+                     : lead.final_score >= 40 ? 'score-mid' : 'score-low';
+
+    const msgId = `msg-${lead.id}`;
+    const isLong = lead.message_text.length > 120;
+    const shortText = isLong ? lead.message_short : lead.message_text;
+
+    const kwHtml = lead.matched_keywords
+      ? JSON.parse(lead.matched_keywords || '[]').map(k =>
+          `<span class="badge badge-cyan">${k}</span>`
+        ).join('')
+      : '';
+
+    const tgLink = lead.username && lead.username !== '—'
+      ? `<a href="https://t.me/${lead.username.replace('@','')}" target="_blank">${lead.username}</a>`
+      : lead.display_name || `user_${lead.user_id}`;
+
+    const chatLink = lead.chat_username
+      ? `<a href="https://t.me/${lead.chat_username}" target="_blank" style="color:var(--muted);font-family:var(--mono);font-size:.75rem">@${lead.chat_username}</a>`
+      : `<span style="color:var(--muted)">${lead.chat_name}</span>`;
+
+    const tooltipParts = [
+      `Intent: ${lead.intent_score}`,
+      `Activity: ${lead.activity_score}`,
+      `Niche: ${lead.niche_score}`,
+    ].join(' | ');
+
+    return `
+      <tr>
+        <td class="col-score">
+          <span class="score-badge ${scoreClass}" title="${tooltipParts}">${lead.final_score}</span>
+        </td>
+        <td class="col-user username">${tgLink}</td>
+        <td class="col-msg">
+          <div class="msg-text">
+            <span class="msg-short" id="${msgId}-short">${escHtml(shortText)}</span>
+            ${isLong ? `
+              <span class="msg-full" id="${msgId}-full">${escHtml(lead.message_text)}</span>
+              <button class="msg-toggle" onclick="toggleMsg('${msgId}')">показать полностью ↓</button>
+            ` : ''}
+          </div>
+        </td>
+        <td class="col-chat">${chatLink}</td>
+        <td class="col-date" style="font-family:var(--mono);font-size:.72rem;color:var(--muted)">
+          ${lead.message_date}
+        </td>
+        <td class="col-kw"><div class="kw-list">${kwHtml}</div></td>
+        <td><span class="badge badge-purple">${lead.niche}</span></td>
+      </tr>`;
+  }).join('');
+}
+
+function toggleMsg(id) {
+  const s = document.getElementById(`${id}-short`);
+  const f = document.getElementById(`${id}-full`);
+  const btn = f.nextElementSibling;
+  const isOpen = f.style.display === 'block';
+  s.style.display = isOpen ? 'block' : 'none';
+  f.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? 'показать полностью ↓' : 'свернуть ↑';
+}
+
+// ══════════════════════════════════════════════════
+//  Pagination
+// ══════════════════════════════════════════════════
+function renderPagination(data) {
+  const el = document.getElementById('paginationEl');
+  const { page, pages } = data;
+  if (pages <= 1) { el.innerHTML = ''; return; }
+
+  let btns = [];
+  btns.push(`<button ${page===1?'disabled':''} onclick="goPage(${page-1})">‹</button>`);
+
+  const range = pageRange(page, pages);
+  for (const p of range) {
+    if (p === '…') btns.push(`<button disabled>…</button>`);
+    else btns.push(`<button class="${p===page?'active':''}" onclick="goPage(${p})">${p}</button>`);
+  }
+
+  btns.push(`<button ${page===pages?'disabled':''} onclick="goPage(${page+1})">›</button>`);
+  el.innerHTML = btns.join('');
+}
+
+function pageRange(current, total) {
+  const delta = 2;
+  const range = [];
+  for (let i = Math.max(2, current-delta); i <= Math.min(total-1, current+delta); i++) {
+    range.push(i);
+  }
+  if (current - delta > 2) range.unshift('…');
+  if (current + delta < total - 1) range.push('…');
+  range.unshift(1);
+  if (total > 1) range.push(total);
+  return range;
+}
+
+function goPage(p) { state.page = p; loadLeads(); window.scrollTo(0,0); }
+
+// ══════════════════════════════════════════════════
+//  Filters & Sort
+// ══════════════════════════════════════════════════
+function applyFilters() {
+  state.page = 1;
+  state.perPage = parseInt(document.getElementById('f-per-page').value);
+  state.filters = {};
+
+  const niche = document.getElementById('f-niche').value;
+  if (niche) state.filters.niche = niche;
+
+  const minScore = document.getElementById('f-min-score').value;
+  if (minScore) state.filters.min_score = minScore;
+
+  const kw = document.getElementById('f-keyword').value.trim();
+  if (kw) state.filters.keyword = kw;
+
+  const df = document.getElementById('f-date-from').value;
+  if (df) state.filters.date_from = df;
+
+  const dt = document.getElementById('f-date-to').value;
+  if (dt) state.filters.date_to = dt;
+
+  renderActiveTags();
+  loadLeads();
+}
+
+function debounceFilter() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(applyFilters, 400);
+}
+
+function resetFilters() {
+  ['f-niche','f-min-score','f-keyword','f-date-from','f-date-to'].forEach(id => {
+    const el = document.getElementById(id);
+    el.tagName === 'SELECT' ? el.selectedIndex = 0 : (el.value = '');
+  });
+  state.filters = {};
+  state.page = 1;
+  renderActiveTags();
+  loadLeads();
+}
+
+function renderActiveTags() {
+  const labels = {
+    niche: 'Ниша', min_score: 'Score ≥', keyword: 'Слово',
+    date_from: 'С', date_to: 'По',
+  };
+  const el = document.getElementById('activeTags');
+  el.innerHTML = Object.entries(state.filters).map(([k,v]) =>
+    `<span class="filter-tag">${labels[k]||k}: ${v}
+      <button onclick="removeFilter('${k}')">✕</button>
+    </span>`
+  ).join('') || '<span style="color:var(--muted);font-size:.72rem;font-family:var(--mono)">Нет активных фильтров</span>';
+}
+
+function removeFilter(key) {
+  const ids = { niche:'f-niche', min_score:'f-min-score', keyword:'f-keyword',
+                date_from:'f-date-from', date_to:'f-date-to' };
+  const el = document.getElementById(ids[key]);
+  if (el) el.tagName === 'SELECT' ? el.selectedIndex = 0 : (el.value = '');
+  delete state.filters[key];
+  state.page = 1;
+  renderActiveTags();
+  loadLeads();
+}
+
+function setSort(col) {
+  if (state.sort === col) {
+    state.order = state.order === 'desc' ? 'asc' : 'desc';
+  } else {
+    state.sort = col;
+    state.order = 'desc';
+  }
+
+  document.querySelectorAll('.leads-table th').forEach(th => {
+    th.classList.remove('sorted');
+    const ic = th.querySelector('.sort-icon');
+    if (ic) ic.textContent = '↕';
+  });
+  const th = document.querySelector(`[data-sort="${col}"]`);
+  if (th) {
+    th.classList.add('sorted');
+    const ic = th.querySelector('.sort-icon');
+    if (ic) ic.textContent = state.order === 'desc' ? '▼' : '▲';
+  }
+
+  state.page = 1;
+  loadLeads();
+}
+
+// ══════════════════════════════════════════════════
+//  Export
+// ══════════════════════════════════════════════════
+function exportLeads(fmt) {
+  const params = new URLSearchParams({ format: fmt, ...state.filters });
+  const url = `/api/export?${params}`;
+  showToast(`Готовим ${fmt.toUpperCase()}…`, 'info');
+  const link = document.createElement('a');
+  link.href = url;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// ══════════════════════════════════════════════════
+//  Utils
+// ══════════════════════════════════════════════════
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,1675 @@
+{% extends "base.html" %}
+{% block title %}TG Leads — Настройки{% endblock %}
+
+{% block extra_style %}
+/* ══════════════════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════════════════ */
+.settings-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100vh - 52px);
+}
+
+/* ── Sidebar ── */
+.settings-sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 1.5rem 0;
+  position: sticky;
+  top: 0;
+  height: calc(100vh - 52px);
+  overflow-y: auto;
+  z-index: 10;
+}
+.sidebar-label {
+  font-family: var(--mono);
+  font-size: .6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  padding: .85rem 1.25rem .3rem;
+}
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .55rem 1.25rem;
+  font-size: .82rem;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+  border-left: 2px solid transparent;
+  font-family: var(--mono);
+  user-select: none;
+}
+.sidebar-item:hover { color: var(--text); background: var(--surface2); }
+.sidebar-item.active {
+  color: var(--accent2);
+  border-left-color: var(--accent2);
+  background: rgba(6,182,212,.06);
+}
+.sidebar-item .icon { font-size: .95rem; width: 18px; text-align: center; flex-shrink: 0; }
+.sidebar-badge {
+  margin-left: auto;
+  background: rgba(6,182,212,.15);
+  color: var(--accent2);
+  font-size: .6rem;
+  padding: 1px 6px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.sidebar-badge.ok  { background: rgba(16,185,129,.15); color: var(--green); }
+.sidebar-badge.err { background: rgba(239,68,68,.15);  color: var(--red); }
+
+/* ── Content ── */
+.settings-content {
+  padding: 2rem 2.5rem;
+  max-width: 860px;
+  min-width: 0;
+}
+
+/* ══════════════════════════════════════════════════
+   SECTIONS
+══════════════════════════════════════════════════ */
+.section { display: none; }
+.section.active { display: block; }
+
+.section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.section-title { font-size: 1.25rem; font-weight: 800; letter-spacing: -.5px; }
+.section-title span { color: var(--accent2); font-family: var(--mono); }
+.section-desc { color: var(--muted); font-size: .8rem; margin-top: .2rem; }
+.section-actions { display: flex; gap: .5rem; flex-wrap: wrap; flex-shrink: 0; }
+
+/* ══════════════════════════════════════════════════
+   CARDS
+══════════════════════════════════════════════════ */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+  position: relative;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 6px 6px 0 0;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.card:hover::before { opacity: 1; }
+.card-title {
+  font-family: var(--mono);
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+.card-warn  { border-color: rgba(239,68,68,.3);  background: rgba(239,68,68,.03); }
+.card-info  { border-color: rgba(6,182,212,.25); background: rgba(6,182,212,.03); }
+.card-ok    { border-color: rgba(16,185,129,.25); background: rgba(16,185,129,.03); }
+
+/* ══════════════════════════════════════════════════
+   FORM ELEMENTS
+══════════════════════════════════════════════════ */
+.cfg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.cfg-field label {
+  display: block;
+  font-family: var(--mono);
+  font-size: .68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: .35rem;
+}
+.cfg-field input { width: 100%; }
+.cfg-field .hint    { font-size: .7rem; color: var(--muted); margin-top: .3rem; font-family: var(--mono); line-height: 1.5; }
+.cfg-field .set-ok  { font-size: .68rem; color: var(--green); font-family: var(--mono); margin-top: .3rem; }
+.cfg-field .set-badge { font-size: .68rem; color: var(--green); font-family: var(--mono); margin-top: .3rem; }
+
+/* Proxy radio buttons */
+.proxy-type-row {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+.proxy-radio {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: .82rem;
+  color: var(--muted);
+  padding: .4rem .75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  transition: all .15s;
+  user-select: none;
+}
+.proxy-radio:hover { color: var(--text); border-color: var(--accent2); }
+.proxy-radio.selected { color: var(--accent2); border-color: var(--accent2); background: rgba(6,182,212,.07); }
+.proxy-radio input { display: none; }
+
+.proxy-result {
+  display: flex;
+  align-items: flex-start;
+  gap: .85rem;
+  padding: .85rem 1.1rem;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: .78rem;
+  margin-bottom: 1rem;
+}
+.proxy-result.ok  { background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2); color: var(--green); }
+.proxy-result.err { background: rgba(239,68,68,.08);  border: 1px solid rgba(239,68,68,.2);  color: var(--red); }
+.proxy-result-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: .05rem; }
+.proxy-result-msg  { line-height: 1.5; }
+.proxy-result-info { opacity: .6; margin-top: .2rem; font-size: .7rem; }
+
+/* ══════════════════════════════════════════════════
+   AUTH SECTION
+══════════════════════════════════════════════════ */
+.auth-status {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .85rem 1.25rem;
+  border-radius: 4px;
+  margin-bottom: 1.25rem;
+  font-family: var(--mono);
+  font-size: .82rem;
+}
+.auth-status.ok      { background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2); color: var(--green); }
+.auth-status.err     { background: rgba(239,68,68,.08);  border: 1px solid rgba(239,68,68,.2);  color: var(--red); }
+.auth-status.pending { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.2); color: var(--yellow); }
+.auth-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.auth-form { display: grid; gap: .75rem; max-width: 420px; }
+.auth-form label { font-family: var(--mono); font-size: .7rem; color: var(--muted); display: block; margin-bottom: .3rem; text-transform: uppercase; letter-spacing: .08em; }
+.auth-form input { width: 100%; }
+.step { display: none; }
+.step.active { display: block; }
+
+/* ══════════════════════════════════════════════════
+   KEYWORDS
+══════════════════════════════════════════════════ */
+.kw-section { margin-bottom: 1.5rem; }
+.kw-section h4 { font-family: var(--mono); font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; margin-bottom: .75rem; }
+.kw-section h4.intent-label  { color: var(--green); }
+.kw-section h4.negative-label { color: var(--red); }
+.tags-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  min-height: 36px;
+  padding: .5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: .75rem;
+}
+.kw-tag { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .65rem; border-radius: 3px; font-family: var(--mono); font-size: .72rem; }
+.kw-tag.intent   { background: rgba(16,185,129,.1); color: var(--green); border: 1px solid rgba(16,185,129,.25); }
+.kw-tag.negative { background: rgba(239,68,68,.1);  color: var(--red);   border: 1px solid rgba(239,68,68,.25); }
+.kw-tag button { background: none; border: none; color: inherit; cursor: pointer; padding: 0; font-size: .8rem; opacity: .6; line-height: 1; }
+.kw-tag button:hover { opacity: 1; }
+.add-kw-row { display: flex; gap: .5rem; }
+.add-kw-row input { flex: 1; min-width: 0; }
+.textarea-bulk { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: var(--mono); font-size: .78rem; padding: .6rem .75rem; resize: vertical; min-height: 80px; outline: none; transition: border-color .2s; }
+.textarea-bulk:focus { border-color: var(--accent); }
+
+/* ══════════════════════════════════════════════════
+   GROUPS
+══════════════════════════════════════════════════ */
+.niche-tab-row { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.25rem; }
+.niche-tab { padding: .3rem .8rem; font-family: var(--mono); font-size: .72rem; border: 1px solid var(--border); border-radius: 3px; cursor: pointer; color: var(--muted); transition: all .15s; }
+.niche-tab:hover, .niche-tab.active { border-color: var(--accent2); color: var(--accent2); background: rgba(6,182,212,.07); }
+.new-niche-btn { color: var(--accent); border-color: rgba(124,58,237,.3); }
+.groups-list { display: grid; gap: .5rem; }
+.group-row { display: flex; align-items: center; gap: .65rem; padding: .6rem .85rem; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; font-family: var(--mono); font-size: .78rem; transition: border-color .15s; flex-wrap: wrap; }
+.group-row:hover { border-color: rgba(6,182,212,.3); }
+.group-username { color: var(--accent2); flex: 1; min-width: 100px; }
+.group-title { color: var(--muted); font-size: .72rem; flex: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 80px; }
+.group-members { color: var(--muted); font-size: .7rem; width: 65px; text-align: right; flex-shrink: 0; }
+.group-source { font-size: .65rem; padding: 1px 5px; border-radius: 2px; flex-shrink: 0; }
+.source-manual { background: rgba(124,58,237,.12); color: #a78bfa; }
+.source-tgstat  { background: rgba(6,182,212,.12);  color: var(--accent2); }
+.source-config  { background: rgba(245,158,11,.12); color: var(--yellow); }
+.toggle-switch { position: relative; width: 34px; height: 18px; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-track { position: absolute; inset: 0; background: var(--border); border-radius: 9px; cursor: pointer; transition: background .2s; }
+.toggle-track::after { content: ''; position: absolute; width: 12px; height: 12px; background: var(--muted); border-radius: 50%; top: 3px; left: 3px; transition: all .2s; }
+.toggle-switch input:checked + .toggle-track { background: rgba(6,182,212,.3); }
+.toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); background: var(--accent2); }
+.add-group-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: .6rem; margin-top: 1rem; }
+
+/* ══════════════════════════════════════════════════
+   TGSTAT
+══════════════════════════════════════════════════ */
+.tgstat-search-row { display: flex; gap: .6rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.tgstat-search-row input { flex: 1; min-width: 160px; }
+.tgstat-results { display: grid; gap: .5rem; }
+.tgstat-card { display: flex; align-items: center; gap: .85rem; padding: .75rem 1rem; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; flex-wrap: wrap; }
+.tgstat-card:hover { border-color: rgba(6,182,212,.3); }
+.tgstat-info { flex: 1; min-width: 140px; }
+.tgstat-name { font-weight: 600; font-size: .85rem; margin-bottom: .15rem; }
+.tgstat-meta { font-family: var(--mono); font-size: .7rem; color: var(--muted); }
+.tgstat-add-form { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.tgstat-niche-sel { width: 130px; font-size: .75rem; }
+
+/* ══════════════════════════════════════════════════
+   TEMPLATES
+══════════════════════════════════════════════════ */
+.template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+.template-card { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 1.1rem; transition: all .2s; position: relative; }
+.template-card:hover { border-color: var(--accent2); transform: translateY(-1px); }
+.t-name  { font-weight: 700; font-size: .9rem; margin-bottom: .45rem; }
+.t-desc  { font-size: .78rem; color: var(--muted); margin-bottom: .75rem; line-height: 1.4; }
+.t-meta  { display: flex; flex-wrap: wrap; gap: .3rem; }
+.t-chip  { font-family: var(--mono); font-size: .65rem; padding: 1px 6px; border-radius: 2px; background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+.t-used  { position: absolute; top: .75rem; right: .75rem; font-family: var(--mono); font-size: .65rem; color: var(--muted); }
+.t-actions { display: flex; gap: .4rem; margin-top: .85rem; flex-wrap: wrap; }
+.template-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+.form-field label { display: block; font-family: var(--mono); font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: .3rem; }
+.form-field input, .form-field select { width: 100%; }
+.full-width { grid-column: 1 / -1; }
+
+/* ══════════════════════════════════════════════════
+   MISC
+══════════════════════════════════════════════════ */
+.empty-msg { text-align: center; padding: 2rem; color: var(--muted); font-family: var(--mono); font-size: .78rem; }
+.divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+
+/* ══════════════════════════════════════════════════
+   MOBILE BOTTOM NAV — главное исправление
+══════════════════════════════════════════════════ */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 50;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.mobile-bottom-nav::-webkit-scrollbar { display: none; }
+.mobile-nav-inner {
+  display: flex;
+  min-width: max-content;
+  padding: 0 .5rem;
+}
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .2rem;
+  padding: .6rem .75rem;
+  font-family: var(--mono);
+  font-size: .58rem;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all .15s;
+  white-space: nowrap;
+  min-width: 56px;
+  text-align: center;
+}
+.mobile-nav-item .m-icon { font-size: 1.1rem; line-height: 1; }
+.mobile-nav-item.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+
+/* ══════════════════════════════════════════════════
+   RESPONSIVE — TABLET (≤ 900px)
+══════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .settings-layout {
+    grid-template-columns: 180px 1fr;
+  }
+  .settings-content {
+    padding: 1.5rem 1.5rem;
+  }
+  .cfg-grid {
+    grid-template-columns: 1fr;
+  }
+  .template-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .add-group-form {
+    grid-template-columns: 1fr auto;
+  }
+  .add-group-form input:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   RESPONSIVE — MOBILE (≤ 640px)
+══════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Скрываем десктопный сайдбар полностью */
+  .settings-sidebar {
+    display: none !important;
+  }
+
+  /* Разворачиваем грид в 1 колонку */
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+
+  /* Показываем нижнюю навигацию */
+  .mobile-bottom-nav {
+    display: block;
+  }
+
+  /* Отступ снизу чтобы контент не перекрывался навигацией */
+  .settings-content {
+    padding: 1rem 1rem 5rem;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .section-actions {
+    width: 100%;
+  }
+  .section-actions .btn {
+    flex: 1;
+    justify-content: center;
+    font-size: .72rem;
+    padding: .45rem .6rem;
+  }
+  .cfg-grid {
+    grid-template-columns: 1fr;
+  }
+  .template-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .add-group-form {
+    grid-template-columns: 1fr;
+  }
+  .add-group-form button {
+    width: 100%;
+  }
+  .group-row {
+    flex-wrap: wrap;
+  }
+  .group-title { display: none; }
+  .group-members { display: none; }
+  .tgstat-add-form {
+    width: 100%;
+  }
+  .tgstat-niche-sel {
+    flex: 1;
+    width: auto;
+  }
+  .proxy-type-row {
+    gap: .6rem;
+  }
+  .proxy-radio {
+    flex: 1;
+    justify-content: center;
+  }
+  .template-grid {
+    grid-template-columns: 1fr;
+  }
+  .auth-form {
+    max-width: 100%;
+  }
+  .add-kw-row {
+    flex-wrap: wrap;
+  }
+  .add-kw-row input {
+    width: 100%;
+  }
+  .add-kw-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+{% endblock %}
+
+{% block content %}
+<div class="settings-layout">
+  <!-- ══ SIDEBAR (desktop only) ══ -->
+  <aside class="settings-sidebar" id="settingsSidebar">
+    <div class="sidebar-label">Главное</div>
+    <div class="sidebar-item active" data-section="config" onclick="showSection('config')">
+      <span class="icon">⚙</span> Конфигурация
+    </div>
+    <div class="sidebar-item" data-section="auth" onclick="showSection('auth')">
+      <span class="icon">🔑</span> TG Auth
+      <span class="sidebar-badge" id="authBadge">…</span>
+    </div>
+    <div class="sidebar-item" data-section="proxy" onclick="showSection('proxy')">
+      <span class="icon">🔌</span> Прокси
+      <span class="sidebar-badge" id="proxyBadge">—</span>
+    </div>
+    <div class="sidebar-label">Парсинг</div>
+    <div class="sidebar-item" data-section="keywords" onclick="showSection('keywords')">
+      <span class="icon">🔍</span> Ключевые слова
+    </div>
+    <div class="sidebar-item" data-section="groups" onclick="showSection('groups')">
+      <span class="icon">👥</span> Группы
+    </div>
+    <div class="sidebar-item" data-section="tgstat" onclick="showSection('tgstat')">
+      <span class="icon">📊</span> TGStat
+    </div>
+    <div class="sidebar-label">Поиск</div>
+    <div class="sidebar-item" data-section="templates" onclick="showSection('templates')">
+      <span class="icon">📋</span> Шаблоны
+    </div>
+  </aside>
+
+  <!-- ══ MAIN CONTENT ══ -->
+  <main class="settings-content">
+
+    <!-- ════════════════════════════════════════════
+         КОНФИГУРАЦИЯ
+    ════════════════════════════════════════════ -->
+    <section class="section active" id="section-config">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Конфи<span>гурация</span></h2>
+          <p class="section-desc">Все настройки хранятся в БД — .env не нужен</p>
+        </div>
+        <div class="section-actions">
+          <button class="btn btn-primary btn-sm" onclick="saveConfig()">💾 Сохранить</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">▸ Telegram API — my.telegram.org/apps</div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <label>API ID</label>
+            <input type="number" id="cfg_tg_api_id" placeholder="12345678" />
+            <div class="hint">my.telegram.org → API development tools</div>
+          </div>
+          <div class="cfg-field">
+            <label>API Hash</label>
+            <input type="password" id="cfg_tg_api_hash" placeholder="Введите чтобы обновить" />
+            <div id="cfg_tg_api_hash_status" class="set-badge"></div>
+          </div>
+          <div class="cfg-field">
+            <label>Номер телефона</label>
+            <input type="tel" id="cfg_tg_phone" placeholder="+79001234567" />
+            <div class="hint">Вводится в Telegram Auth</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">▸ TGStat API — tgstat.ru/api</div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <label>TGStat Token</label>
+            <input type="password" id="cfg_tgstat_token" placeholder="Введите чтобы обновить" />
+            <div id="cfg_tgstat_token_status" class="set-badge"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">▸ Параметры парсинга</div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <label>Глубина (дней)</label>
+            <input type="number" id="cfg_parse_days_back" placeholder="30" min="1" max="365" />
+          </div>
+          <div class="cfg-field">
+            <label>Лимит сообщений на группу</label>
+            <input type="number" id="cfg_parse_limit" placeholder="200" min="10" max="2000" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════
+         TELEGRAM AUTH
+    ════════════════════════════════════════════ -->
+    <section class="section" id="section-auth">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Telegram <span>Auth</span></h2>
+          <p class="section-desc">SMS-авторизация через свой аккаунт</p>
+        </div>
+      </div>
+
+      <div id="authStatusBar"></div>
+
+      <div class="card step active" id="step-phone">
+        <div class="card-title">▸ Шаг 1 — Номер телефона</div>
+        <div class="auth-form">
+          <div>
+            <label>Телефон</label>
+            <input type="tel" id="inputPhone" placeholder="+79001234567" />
+          </div>
+          <button class="btn btn-primary" onclick="sendCode()">📱 Отправить код</button>
+          <p style="font-size:.72rem;color:var(--muted);font-family:var(--mono)">
+            Если в Конфигурации задан номер — он подставится автоматически
+          </p>
+        </div>
+      </div>
+
+      <div class="card step" id="step-code">
+        <div class="card-title">▸ Шаг 2 — Код из Telegram</div>
+        <div class="auth-form">
+          <div>
+            <label>Код подтверждения</label>
+            <input type="text" id="inputCode" placeholder="1 2 3 4 5" maxlength="10"
+                   style="font-size:1.4rem;letter-spacing:.3em;text-align:center;font-family:var(--mono)"
+                   oninput="autoSubmitCode(this)" />
+          </div>
+          <button class="btn btn-primary" onclick="signIn()">✓ Подтвердить</button>
+          <button class="btn btn-secondary btn-sm" onclick="resetAuth()">← Изменить номер</button>
+        </div>
+      </div>
+
+      <div class="card step" id="step-2fa">
+        <div class="card-title">▸ Шаг 3 — Двухфакторная аутентификация</div>
+        <div class="auth-form">
+          <div>
+            <label>Облачный пароль 2FA</label>
+            <input type="password" id="input2fa" placeholder="••••••••" />
+          </div>
+          <button class="btn btn-primary" onclick="signIn2fa()">🔓 Войти</button>
+        </div>
+      </div>
+
+      <div class="card step" id="step-authorized" style="display:none">
+        <div class="card-title">▸ Сессия активна</div>
+        <div id="meInfo" style="margin-bottom:1rem"></div>
+        <button class="btn btn-secondary btn-sm" onclick="doLogout()"
+                style="color:var(--red);border-color:rgba(239,68,68,.3)">
+          ⏻ Выйти из аккаунта
+        </button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════
+         ПРОКСИ
+    ════════════════════════════════════════════ -->
+    <section class="section" id="section-proxy">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Прокси <span>SOCKS5 / MTProto</span></h2>
+          <p class="section-desc">Нужен если хостинг блокирует прямое подключение к Telegram</p>
+        </div>
+        <div class="section-actions">
+          <button class="btn btn-secondary btn-sm" id="proxyTestBtn" onclick="testProxy()">⚡ Тест</button>
+          <button class="btn btn-primary btn-sm" onclick="saveProxy()">💾 Сохранить</button>
+        </div>
+      </div>
+
+      <div class="card card-warn">
+        <div style="display:flex;align-items:flex-start;gap:.85rem">
+          <span style="font-size:1.5rem;flex-shrink:0">❌</span>
+          <div>
+            <div style="font-weight:700;font-size:.88rem;margin-bottom:.35rem">
+              Хостинг блокирует MTProto — прямое подключение к Telegram невозможно
+            </div>
+            <div style="font-family:var(--mono);font-size:.72rem;color:var(--muted);line-height:1.7">
+              Порты 443 / 80 / 5222 Telegram недоступны напрямую с вашего хостинга.<br>
+              Настройте SOCKS5 или MTProxy ниже — тогда все запросы пойдут через прокси.
+            </div>
+            <div style="margin-top:.85rem;display:flex;flex-wrap:wrap;gap:.5rem">
+              <a href="https://www.webshare.io/" target="_blank"
+                 class="btn btn-secondary btn-sm" style="font-size:.7rem">
+                🌐 Webshare.io — бесплатный SOCKS5
+              </a>
+              <a href="https://t.me/MTProxybot" target="_blank"
+                 class="btn btn-secondary btn-sm" style="font-size:.7rem">
+                ✈ @MTProxybot — MTProto
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="proxyTestResult" style="display:none"></div>
+
+      <div class="card">
+        <div class="card-title">▸ Тип подключения</div>
+        <div class="proxy-type-row">
+          <label class="proxy-radio selected" id="proxyLabelNone">
+            <input type="radio" name="proxyType" value="" checked onchange="onProxyTypeChange()" />
+            ✕ Отключён
+          </label>
+          <label class="proxy-radio" id="proxyLabelSocks5">
+            <input type="radio" name="proxyType" value="socks5" onchange="onProxyTypeChange()" />
+            SOCKS5
+          </label>
+          <label class="proxy-radio" id="proxyLabelMtproto">
+            <input type="radio" name="proxyType" value="mtproto" onchange="onProxyTypeChange()" />
+            MTProto
+          </label>
+        </div>
+
+        <div id="proxyFieldsCommon" style="display:none">
+          <div class="cfg-grid" style="margin-bottom:.85rem">
+            <div class="cfg-field">
+              <label>Host / IP</label>
+              <input type="text" id="proxy_host" placeholder="proxy.example.com или 1.2.3.4" autocomplete="off" />
+            </div>
+            <div class="cfg-field">
+              <label>Port</label>
+              <input type="number" id="proxy_port" placeholder="1080" min="1" max="65535" />
+            </div>
+          </div>
+
+          <div id="proxyFieldsSocks" style="display:none">
+            <div class="divider" style="margin:.5rem 0 1rem"></div>
+            <div style="font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.08em">
+              Авторизация <span style="opacity:.5">(опционально)</span>
+            </div>
+            <div class="cfg-grid">
+              <div class="cfg-field">
+                <label>Username</label>
+                <input type="text" id="proxy_user" placeholder="user" autocomplete="off" />
+              </div>
+              <div class="cfg-field">
+                <label>Password</label>
+                <input type="password" id="proxy_pass" placeholder="Введите чтобы обновить" autocomplete="new-password" />
+                <div class="set-badge" id="proxy_pass_status"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="proxyFieldsMtproto" style="display:none">
+            <div class="divider" style="margin:.5rem 0 1rem"></div>
+            <div class="cfg-field">
+              <label>Secret (hex)</label>
+              <input type="text" id="proxy_secret"
+                     placeholder="dd… или ee… (32+ символа)"
+                     style="font-family:var(--mono);font-size:.78rem;letter-spacing:.04em;width:100%"
+                     autocomplete="off" />
+              <div class="hint">
+                Из ссылки: <code style="color:var(--text)">tg://proxy?server=…&port=…&secret=<b>ВОТ_ЭТО</b></code>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="proxyHowTo" style="display:none">
+        <div id="howToSocks" style="display:none">
+          <div class="card card-info">
+            <div class="card-title">▸ Как получить SOCKS5 бесплатно — Webshare.io</div>
+            <div style="font-size:.82rem;color:var(--muted);line-height:1.9">
+              1. Зарегистрируйтесь на
+              <a href="https://www.webshare.io/" target="_blank" style="color:var(--accent2)">webshare.io</a>
+              — бесплатный план: 10 прокси, карта не нужна<br>
+              2. Dashboard → Proxy List → выберите любой прокси<br>
+              3. Скопируйте <b style="color:var(--text)">Host</b>,
+                 <b style="color:var(--text)">Port</b>,
+                 <b style="color:var(--text)">Username</b>,
+                 <b style="color:var(--text)">Password</b><br>
+              4. Вставьте в поля выше, нажмите <b style="color:var(--text)">💾 Сохранить</b>,
+                 затем <b style="color:var(--text)">⚡ Тест</b>
+            </div>
+          </div>
+        </div>
+        <div id="howToMtproto" style="display:none">
+          <div class="card card-info">
+            <div class="card-title">▸ Как получить MTProxy — @MTProxybot</div>
+            <div style="font-size:.82rem;color:var(--muted);line-height:1.9">
+              1. Откройте
+              <a href="https://t.me/MTProxybot" target="_blank" style="color:var(--accent2)">@MTProxybot</a>
+              в Telegram и отправьте <code>/getproxy</code><br>
+              2. Из ссылки вида
+              <code style="font-size:.75rem;color:var(--text)">tg://proxy?server=X&port=Y&secret=Z</code><br>
+              &nbsp;&nbsp;&nbsp;скопируйте: <b style="color:var(--text)">server → Host</b>,
+                              <b style="color:var(--text)">port → Port</b>,
+                              <b style="color:var(--text)">secret → Secret</b><br>
+              3. Вставьте выше, нажмите <b style="color:var(--text)">💾 Сохранить</b>,
+                 затем <b style="color:var(--text)">⚡ Тест</b>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════
+         КЛЮЧЕВЫЕ СЛОВА
+    ════════════════════════════════════════════ -->
+    <section class="section" id="section-keywords">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Ключевые <span>слова</span></h2>
+          <p class="section-desc">Intent и negative keywords для детектора лидов</p>
+        </div>
+        <div class="section-actions">
+          <button class="btn btn-secondary btn-sm" onclick="syncKeywords()">↻ Sync config</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="kw-section">
+          <h4 class="intent-label">✓ Intent keywords</h4>
+          <div class="tags-cloud" id="intentTags"></div>
+          <div class="add-kw-row">
+            <input type="text" id="intentInput" placeholder="Добавить слово…"
+                   onkeydown="if(event.key==='Enter')addKeyword('intent')" />
+            <button class="btn btn-cyan btn-sm" onclick="addKeyword('intent')">+ Добавить</button>
+          </div>
+        </div>
+        <hr class="divider" />
+        <div class="kw-section">
+          <h4 class="negative-label">✗ Negative keywords</h4>
+          <div class="tags-cloud" id="negativeTags"></div>
+          <div class="add-kw-row">
+            <input type="text" id="negativeInput" placeholder="Добавить слово…"
+                   onkeydown="if(event.key==='Enter')addKeyword('negative')" />
+            <button class="btn btn-secondary btn-sm"
+                    style="color:var(--red);border-color:rgba(239,68,68,.3)"
+                    onclick="addKeyword('negative')">+ Добавить</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">▸ Массовое добавление</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div>
+            <label style="font-family:var(--mono);font-size:.7rem;color:var(--green);display:block;margin-bottom:.4rem">INTENT</label>
+            <textarea class="textarea-bulk" id="bulkIntent" placeholder="ищу&#10;нужен&#10;куплю"></textarea>
+            <button class="btn btn-cyan btn-sm" style="margin-top:.5rem;width:100%" onclick="bulkAdd('intent')">+ Добавить все</button>
+          </div>
+          <div>
+            <label style="font-family:var(--mono);font-size:.7rem;color:var(--red);display:block;margin-bottom:.4rem">NEGATIVE</label>
+            <textarea class="textarea-bulk" id="bulkNegative" placeholder="бесплатно&#10;даром"></textarea>
+            <button class="btn btn-secondary btn-sm"
+                    style="margin-top:.5rem;width:100%;color:var(--red);border-color:rgba(239,68,68,.3)"
+                    onclick="bulkAdd('negative')">+ Добавить все</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════
+         ГРУППЫ
+    ════════════════════════════════════════════ -->
+    <section class="section" id="section-groups">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Telegram <span>группы</span></h2>
+          <p class="section-desc">Группы по нишам для парсинга</p>
+        </div>
+        <div class="section-actions">
+          <button class="btn btn-secondary btn-sm" onclick="syncGroups()">↻ Sync config</button>
+          <button class="btn btn-primary btn-sm" onclick="promptNewNiche()">+ Ниша</button>
+        </div>
+      </div>
+
+      <div class="niche-tab-row" id="nicheTabs"></div>
+
+      <div class="card">
+        <div id="groupsListContainer"><div class="empty-msg">Выберите нишу выше</div></div>
+        <hr class="divider" />
+        <div class="card-title">▸ Добавить вручную</div>
+        <div class="add-group-form">
+          <input type="text" id="newGroupUsername" placeholder="username (без @)" />
+          <input type="text" id="newGroupTitle" placeholder="Название (опционально)" />
+          <button class="btn btn-cyan btn-sm" onclick="addGroup()">+ Добавить</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════
+         TGSTAT
+    ════════════════════════════════════════════ -->
+    <section class="section" id="section-tgstat">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">TGStat <span>API</span></h2>
+          <p class="section-desc">Поиск групп — токен задаётся в Конфигурации</p>
+        </div>
+      </div>
+
+      <div id="tgstatStatus" class="card" style="padding:.85rem 1.25rem;margin-bottom:.75rem"></div>
+
+      <div class="card">
+        <div class="card-title">▸ Поиск каналов и групп</div>
+        <div class="tgstat-search-row">
+          <input type="text" id="tgstatQuery" placeholder="дизайн, маркетинг, python…"
+                 onkeydown="if(event.key==='Enter')tgstatSearch()" />
+          <select id="tgstatNicheTarget" style="min-width:130px"><option value="">Выберите нишу</option></select>
+          <button class="btn btn-cyan" onclick="tgstatSearch()">🔍 Найти</button>
+        </div>
+        <div id="tgstatResults" class="tgstat-results"></div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════
+         ШАБЛОНЫ
+    ════════════════════════════════════════════ -->
+    <section class="section" id="section-templates">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Шаблоны <span>поиска</span></h2>
+          <p class="section-desc">Сохранённые наборы фильтров</p>
+        </div>
+        <div class="section-actions">
+          <button class="btn btn-secondary btn-sm" onclick="exportTemplates()">↓ JSON</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+            ↑ Импорт
+            <input type="file" accept=".json" style="display:none" onchange="importTemplates(this)">
+          </label>
+          <button class="btn btn-primary btn-sm" onclick="showTemplateForm()">+ Новый</button>
+        </div>
+      </div>
+
+      <div class="card" id="templateForm" style="display:none;border-color:rgba(124,58,237,.3)">
+        <div class="card-title">▸ <span id="templateFormTitle">Новый шаблон</span></div>
+        <div class="template-form-grid">
+          <div class="form-field full-width">
+            <label>Название *</label>
+            <input type="text" id="tplName" placeholder="Горячие лиды по дизайну" />
+          </div>
+          <div class="form-field full-width">
+            <label>Описание</label>
+            <input type="text" id="tplDesc" placeholder="Лиды за 7 дней, score ≥ 70" />
+          </div>
+          <div class="form-field">
+            <label>Ниша</label>
+            <select id="tplNiche"><option value="">Все ниши</option></select>
+          </div>
+          <div class="form-field">
+            <label>Минимальный score</label>
+            <input type="number" id="tplMinScore" placeholder="70" min="0" max="100" />
+          </div>
+          <div class="form-field">
+            <label>Ключевое слово</label>
+            <input type="text" id="tplKeyword" placeholder="логотип, бот…" />
+          </div>
+          <div class="form-field">
+            <label>Последние N дней</label>
+            <input type="number" id="tplDays" placeholder="7" min="1" max="365" />
+          </div>
+          <div class="form-field">
+            <label>Сортировка</label>
+            <select id="tplSort">
+              <option value="final_score">По score</option>
+              <option value="message_date">По дате</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Порядок</label>
+            <select id="tplOrder">
+              <option value="desc">По убыванию</option>
+              <option value="asc">По возрастанию</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:.6rem;margin-top:1rem;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="saveTemplate()">💾 Сохранить</button>
+          <button class="btn btn-secondary btn-sm" onclick="cancelTemplate()">Отмена</button>
+        </div>
+        <input type="hidden" id="tplEditId" value="" />
+      </div>
+
+      <div class="template-grid" id="templateGrid">
+        <div class="empty-msg" style="grid-column:1/-1">Загрузка…</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ══ МОБИЛЬНАЯ НИЖНЯЯ НАВИГАЦИЯ ══ -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Навигация по настройкам">
+  <div class="mobile-nav-inner">
+    <div class="mobile-nav-item active" data-section="config" onclick="showSection('config')">
+      <span class="m-icon">⚙</span>Конфиг
+    </div>
+    <div class="mobile-nav-item" data-section="auth" onclick="showSection('auth')">
+      <span class="m-icon">🔑</span>TG Auth
+    </div>
+    <div class="mobile-nav-item" data-section="proxy" onclick="showSection('proxy')">
+      <span class="m-icon">🔌</span>Прокси
+    </div>
+    <div class="mobile-nav-item" data-section="keywords" onclick="showSection('keywords')">
+      <span class="m-icon">🔍</span>Слова
+    </div>
+    <div class="mobile-nav-item" data-section="groups" onclick="showSection('groups')">
+      <span class="m-icon">👥</span>Группы
+    </div>
+    <div class="mobile-nav-item" data-section="tgstat" onclick="showSection('tgstat')">
+      <span class="m-icon">📊</span>TGStat
+    </div>
+    <div class="mobile-nav-item" data-section="templates" onclick="showSection('templates')">
+      <span class="m-icon">📋</span>Шаблоны
+    </div>
+  </div>
+</nav>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+'use strict';
+
+const _loaded = { keywords: false, groups: false, tgstat: false, templates: false, proxy: false };
+
+// ══════════════════════════════════════════════════
+//  NAVIGATION — работает и для десктопного сайдбара,
+//  и для мобильной нижней панели
+// ══════════════════════════════════════════════════
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+
+  // Десктопный сайдбар
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  const sidebarItem = document.querySelector(`.sidebar-item[data-section="${name}"]`);
+  if (sidebarItem) sidebarItem.classList.add('active');
+
+  // Мобильная нав
+  document.querySelectorAll('.mobile-nav-item').forEach(i => i.classList.remove('active'));
+  const mobileItem = document.querySelector(`.mobile-nav-item[data-section="${name}"]`);
+  if (mobileItem) mobileItem.classList.add('active');
+
+  const sec = document.getElementById(`section-${name}`);
+  if (sec) {
+    sec.classList.add('active');
+    // На мобильном скроллим наверх при смене секции
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Lazy load
+  if (name === 'keywords'  && !_loaded.keywords)  { loadKeywords();                     _loaded.keywords = true; }
+  if (name === 'groups'    && !_loaded.groups)     { loadGroupNiches();                  _loaded.groups = true; }
+  if (name === 'tgstat'    && !_loaded.tgstat)     { checkTgstat(); loadTgstatNiches();  _loaded.tgstat = true; }
+  if (name === 'templates' && !_loaded.templates)  { loadTemplates(); loadTemplateNiches(); _loaded.templates = true; }
+  if (name === 'proxy'     && !_loaded.proxy)      { loadProxy();                        _loaded.proxy = true; }
+}
+
+// ══════════════════════════════════════════════════
+//  КОНФИГУРАЦИЯ
+// ══════════════════════════════════════════════════
+async function loadConfig() {
+  try {
+    const resp = await fetch('/api/settings/config');
+    if (!resp.ok) return;
+    const d = await resp.json();
+    if (d.tg_api_id)       document.getElementById('cfg_tg_api_id').value       = d.tg_api_id;
+    if (d.tg_phone)        document.getElementById('cfg_tg_phone').value        = d.tg_phone;
+    if (d.parse_days_back) document.getElementById('cfg_parse_days_back').value = d.parse_days_back;
+    if (d.parse_limit)     document.getElementById('cfg_parse_limit').value     = d.parse_limit;
+    document.getElementById('cfg_tg_api_hash_status').textContent  = d.tg_api_hash_set  ? '✓ Hash сохранён' : '';
+    document.getElementById('cfg_tgstat_token_status').textContent = d.tgstat_token_set ? '✓ Token сохранён' : '';
+    if (d.tg_phone) {
+      const ph = document.getElementById('inputPhone');
+      if (ph && !ph.value) ph.value = d.tg_phone;
+    }
+  } catch (e) { console.warn('loadConfig:', e); }
+}
+
+async function saveConfig() {
+  const payload = {
+    tg_api_id:       document.getElementById('cfg_tg_api_id').value.trim(),
+    tg_api_hash:     document.getElementById('cfg_tg_api_hash').value.trim(),
+    tg_phone:        document.getElementById('cfg_tg_phone').value.trim(),
+    tgstat_token:    document.getElementById('cfg_tgstat_token').value.trim(),
+    parse_days_back: parseInt(document.getElementById('cfg_parse_days_back').value) || 30,
+    parse_limit:     parseInt(document.getElementById('cfg_parse_limit').value) || 200,
+  };
+  try {
+    const resp = await fetch('/api/settings/config', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showToast(data.error || 'Ошибка', 'error'); return; }
+    document.getElementById('cfg_tg_api_hash').value  = '';
+    document.getElementById('cfg_tgstat_token').value = '';
+    showToast('✓ Конфигурация сохранена', 'success');
+    await loadConfig();
+    checkAuthStatus();
+  } catch (e) { showToast('Ошибка сети', 'error'); }
+}
+
+// ══════════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════════
+let _phoneCodeHash = '', _phone = '';
+
+async function checkAuthStatus() {
+  const badge = document.getElementById('authBadge');
+  try {
+    const resp = await fetch('/api/settings/tg/status');
+    const data = await resp.json();
+    if (data.authorized) {
+      if (badge) { badge.textContent = '✓'; badge.className = 'sidebar-badge ok'; }
+      showAuthorizedState(data.user);
+    } else {
+      if (badge) { badge.textContent = '✗'; badge.className = 'sidebar-badge err'; }
+      showStep('phone');
+      showStatusBar('err', '✗ Не авторизован');
+    }
+  } catch {
+    if (badge) { badge.textContent = '?'; badge.className = 'sidebar-badge'; }
+  }
+}
+
+function showAuthorizedState(user) {
+  showAllStepsOff();
+  const stepEl = document.getElementById('step-authorized');
+  if (stepEl) stepEl.style.display = 'block';
+  if (user) {
+    const name = [user.first_name, user.last_name].filter(Boolean).join(' ');
+    const meEl = document.getElementById('meInfo');
+    if (meEl) meEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:.85rem;flex-wrap:wrap">
+        <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;flex-shrink:0">
+          ${(user.first_name || '?')[0]}
+        </div>
+        <div>
+          <div style="font-weight:700">${escHtml(name || 'Пользователь')}</div>
+          <div style="font-family:var(--mono);font-size:.75rem;color:var(--accent2)">${user.username ? '@' + user.username : ''}</div>
+          <div style="font-family:var(--mono);font-size:.72rem;color:var(--muted)">${user.phone || ''}</div>
+        </div>
+      </div>`;
+  }
+  showStatusBar('ok', '✓ Telegram авторизован');
+}
+
+function showAllStepsOff() {
+  ['step-phone','step-code','step-2fa','step-authorized'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('active');
+    el.style.display = '';
+  });
+}
+function showStep(name) {
+  showAllStepsOff();
+  const el = document.getElementById(`step-${name}`);
+  if (el) el.classList.add('active');
+}
+function showStatusBar(type, text) {
+  const el = document.getElementById('authStatusBar');
+  if (el) el.innerHTML = `<div class="auth-status ${type}"><div class="auth-dot"></div>${escHtml(text)}</div>`;
+}
+
+async function sendCode() {
+  const phone = (document.getElementById('inputPhone')?.value || '').trim();
+  if (!phone) { showToast('Введите номер телефона', 'error'); return; }
+  showStatusBar('pending', '⏳ Отправляем код…');
+  try {
+    const resp = await fetch('/api/settings/tg/send-code', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({phone}),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showStatusBar('err', `✗ ${data.error}`); return; }
+    _phone = phone; _phoneCodeHash = data.phone_code_hash;
+    showStep('code');
+    showStatusBar('pending', `📱 Код отправлен на ${phone}`);
+  } catch (e) { showStatusBar('err', `✗ ${e.message}`); }
+}
+
+function autoSubmitCode(input) {
+  if (input.value.replace(/\D/g, '').length >= 5) signIn();
+}
+
+async function signIn(password = null) {
+  const code = (document.getElementById('inputCode')?.value || '').trim();
+  if (!code) { showToast('Введите код', 'error'); return; }
+  showStatusBar('pending', '⏳ Проверяем код…');
+  try {
+    const body = { phone: _phone, code, phone_code_hash: _phoneCodeHash };
+    if (password) body.password = password;
+    const resp = await fetch('/api/settings/tg/sign-in', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+    if (resp.status === 401 && data.error === '2fa_required') {
+      showStep('2fa'); showStatusBar('pending', '🔐 Требуется 2FA'); return;
+    }
+    if (!resp.ok) { showStatusBar('err', `✗ ${data.error}`); return; }
+    const badge = document.getElementById('authBadge');
+    if (badge) { badge.textContent = '✓'; badge.className = 'sidebar-badge ok'; }
+    showAuthorizedState(data.user);
+    showToast('✓ Авторизация успешна!', 'success');
+  } catch (e) { showStatusBar('err', `✗ ${e.message}`); }
+}
+function signIn2fa() { signIn(document.getElementById('input2fa')?.value); }
+function resetAuth() { showStep('phone'); showStatusBar('err', '✗ Не авторизован'); }
+
+async function doLogout() {
+  if (!confirm('Выйти из Telegram?')) return;
+  await fetch('/api/settings/tg/logout', { method: 'POST' });
+  const badge = document.getElementById('authBadge');
+  if (badge) { badge.textContent = '✗'; badge.className = 'sidebar-badge err'; }
+  resetAuth();
+  showToast('Сессия завершена', 'info');
+}
+
+// ══════════════════════════════════════════════════
+//  PROXY
+// ══════════════════════════════════════════════════
+function onProxyTypeChange() {
+  const type = document.querySelector('input[name="proxyType"]:checked')?.value || '';
+  document.querySelectorAll('.proxy-radio').forEach(el => el.classList.remove('selected'));
+  const checked = document.querySelector('input[name="proxyType"]:checked');
+  if (checked) checked.closest('.proxy-radio')?.classList.add('selected');
+
+  const show = type !== '';
+  _setDisplay('proxyFieldsCommon', show ? 'block' : 'none');
+  _setDisplay('proxyFieldsSocks',   type === 'socks5' ? 'block' : 'none');
+  _setDisplay('proxyFieldsMtproto', type === 'mtproto' ? 'block' : 'none');
+  _setDisplay('proxyHowTo', show ? 'block' : 'none');
+  _setDisplay('howToSocks',   type === 'socks5' ? 'block' : 'none');
+  _setDisplay('howToMtproto', type === 'mtproto' ? 'block' : 'none');
+
+  const badge = document.getElementById('proxyBadge');
+  if (badge) {
+    if (type === 'socks5')       { badge.textContent = 'SOCKS5';  badge.style.cssText = 'background:rgba(6,182,212,.15);color:var(--accent2)'; }
+    else if (type === 'mtproto') { badge.textContent = 'MTProto'; badge.style.cssText = 'background:rgba(124,58,237,.15);color:#a78bfa'; }
+    else                         { badge.textContent = 'выкл';    badge.style.cssText = ''; }
+  }
+}
+
+async function loadProxy() {
+  try {
+    const resp = await fetch('/api/settings/proxy');
+    if (!resp.ok) return;
+    const d = await resp.json();
+    const type = d.proxy_type || '';
+    document.querySelectorAll('input[name="proxyType"]').forEach(r => { r.checked = (r.value === type); });
+    onProxyTypeChange();
+    if (d.proxy_host)   _val('proxy_host',   d.proxy_host);
+    if (d.proxy_port)   _val('proxy_port',   d.proxy_port);
+    if (d.proxy_user)   _val('proxy_user',   d.proxy_user);
+    if (d.proxy_secret) _val('proxy_secret', d.proxy_secret);
+    const ps = document.getElementById('proxy_pass_status');
+    if (ps) ps.textContent = d.proxy_pass_set ? '✓ Пароль сохранён' : '';
+  } catch (e) { console.warn('loadProxy:', e); }
+}
+
+async function saveProxy() {
+  const type = document.querySelector('input[name="proxyType"]:checked')?.value || '';
+  const body = {
+    proxy_type:   type,
+    proxy_host:   (_gval('proxy_host')   || '').trim(),
+    proxy_port:   (_gval('proxy_port')   || '').trim(),
+    proxy_user:   (_gval('proxy_user')   || '').trim(),
+    proxy_pass:   _gval('proxy_pass')   || '',
+    proxy_secret: (_gval('proxy_secret') || '').trim(),
+  };
+  try {
+    const resp = await fetch('/api/settings/proxy', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body),
+    });
+    if (!resp.ok) { showToast('Ошибка сохранения', 'error'); return; }
+    _val('proxy_pass', '');
+    showToast('✓ Прокси сохранён', 'success');
+    onProxyTypeChange();
+  } catch (e) { showToast('Ошибка сети', 'error'); }
+}
+
+async function testProxy() {
+  const btn = document.getElementById('proxyTestBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
+  _setDisplay('proxyTestResult', 'none');
+  try {
+    const resp = await fetch('/api/settings/proxy/test', { method: 'POST' });
+    const data = await resp.json();
+    const ok = data.ok;
+    const el = document.getElementById('proxyTestResult');
+    if (el) {
+      el.style.display = 'block';
+      el.innerHTML = `
+        <div class="proxy-result ${ok ? 'ok' : 'err'}">
+          <div class="proxy-result-icon">${ok ? '✓' : '✗'}</div>
+          <div>
+            <div class="proxy-result-msg">${escHtml(data.message || '')}</div>
+            ${data.proxy_info ? `<div class="proxy-result-info">${escHtml(data.proxy_info)}</div>` : ''}
+          </div>
+        </div>`;
+    }
+    showToast(data.message, ok ? 'success' : 'error');
+  } catch (e) {
+    showToast(`Ошибка: ${e.message}`, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⚡ Тест'; }
+  }
+}
+
+// ══════════════════════════════════════════════════
+//  KEYWORDS
+// ══════════════════════════════════════════════════
+let _kwData = { intent: [], negative: [] };
+
+async function loadKeywords() {
+  try {
+    const resp = await fetch('/api/settings/keywords');
+    _kwData = await resp.json();
+    renderKeywords();
+  } catch (e) { console.warn('loadKeywords:', e); }
+}
+
+function renderKeywords() {
+  renderTags('intentTags',   _kwData.intent,   'intent');
+  renderTags('negativeTags', _kwData.negative, 'negative');
+}
+
+function renderTags(id, items, kind) {
+  const c = document.getElementById(id);
+  if (!c) return;
+  if (!items.length) {
+    c.innerHTML = `<span style="color:var(--muted);font-family:var(--mono);font-size:.72rem;padding:.2rem">Нет слов</span>`;
+    return;
+  }
+  c.innerHTML = items.map(kw =>
+    `<span class="kw-tag ${kind}">${escHtml(kw.word)}<button onclick="deleteKeyword(${kw.id},'${kind}')">✕</button></span>`
+  ).join('');
+}
+
+async function addKeyword(kind) {
+  const inputId = kind === 'intent' ? 'intentInput' : 'negativeInput';
+  const word = (_gval(inputId) || '').trim().toLowerCase();
+  if (!word) return;
+  try {
+    const resp = await fetch('/api/settings/keywords', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({word, kind}),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showToast(data.error, 'error'); return; }
+    _kwData[kind].push(data);
+    renderKeywords();
+    _val(inputId, '');
+  } catch (e) { showToast('Ошибка', 'error'); }
+}
+
+async function deleteKeyword(id, kind) {
+  await fetch(`/api/settings/keywords/${id}`, { method: 'DELETE' });
+  _kwData[kind] = _kwData[kind].filter(k => k.id !== id);
+  renderKeywords();
+}
+
+async function bulkAdd(kind) {
+  const textareaId = kind === 'intent' ? 'bulkIntent' : 'bulkNegative';
+  const words = (_gval(textareaId) || '').split('\n').map(w => w.trim()).filter(Boolean);
+  if (!words.length) { showToast('Введите слова', 'error'); return; }
+  const resp = await fetch('/api/settings/keywords/bulk', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({kind, words}),
+  });
+  const data = await resp.json();
+  showToast(`Добавлено: ${data.added}, пропущено: ${data.skipped}`, 'info');
+  _val(textareaId, '');
+  await loadKeywords();
+}
+
+async function syncKeywords() {
+  const resp = await fetch('/api/settings/keywords/sync-config', { method: 'POST' });
+  const data = await resp.json();
+  showToast(`Sync: добавлено ${data.added} слов`, 'info');
+  await loadKeywords();
+}
+
+// ══════════════════════════════════════════════════
+//  GROUPS
+// ══════════════════════════════════════════════════
+let _currentNiche = '', _allNiches = [];
+
+async function loadGroupNiches() {
+  try {
+    const resp = await fetch('/api/settings/groups/niches');
+    _allNiches = await resp.json();
+    renderNicheTabs();
+    if (_allNiches.length) selectNicheTab(_allNiches[0].niche);
+  } catch (e) { console.warn('loadGroupNiches:', e); }
+}
+
+function renderNicheTabs() {
+  const c = document.getElementById('nicheTabs');
+  if (!c) return;
+  c.innerHTML = _allNiches.map(n =>
+    `<div class="niche-tab ${n.niche === _currentNiche ? 'active' : ''}" onclick="selectNicheTab('${escAttr(n.niche)}')">${escHtml(n.niche)} <span style="opacity:.45">(${n.count})</span></div>`
+  ).join('') + `<div class="niche-tab new-niche-btn" onclick="promptNewNiche()">+ Новая ниша</div>`;
+}
+
+async function selectNicheTab(niche) {
+  _currentNiche = niche;
+  renderNicheTabs();
+  try {
+    const resp = await fetch(`/api/settings/groups?niche=${encodeURIComponent(niche)}`);
+    const data = await resp.json();
+    renderGroupsList(data[niche] || []);
+  } catch (e) { console.warn('selectNicheTab:', e); }
+}
+
+function renderGroupsList(groups) {
+  const c = document.getElementById('groupsListContainer');
+  if (!c) return;
+  if (!groups.length) {
+    c.innerHTML = '<div class="empty-msg">Нет групп. Добавьте вручную или через TGStat.</div>';
+    return;
+  }
+  c.innerHTML = `<div class="groups-list">${groups.map(g => `
+    <div class="group-row">
+      <a href="https://t.me/${g.username}" target="_blank" class="group-username">@${escHtml(g.username)}</a>
+      <span class="group-title">${escHtml(g.title || '')}</span>
+      <span class="group-members">${g.members_count ? fmtNum(g.members_count) : '—'}</span>
+      <span class="group-source source-${g.source}">${g.source}</span>
+      <label class="toggle-switch">
+        <input type="checkbox" ${g.active ? 'checked' : ''} onchange="toggleGroup(${g.id}, this.checked)"/>
+        <div class="toggle-track"></div>
+      </label>
+      <button class="btn btn-secondary btn-sm"
+              style="color:var(--red);border-color:rgba(239,68,68,.2);padding:.2rem .5rem"
+              onclick="deleteGroup(${g.id})">✕</button>
+    </div>`).join('')}</div>`;
+}
+
+async function addGroup() {
+  const username = (_gval('newGroupUsername') || '').trim().replace(/^@/, '');
+  const title    = (_gval('newGroupTitle') || '').trim();
+  if (!username || !_currentNiche) { showToast('Выберите нишу и введите username', 'error'); return; }
+  const resp = await fetch('/api/settings/groups', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ niche: _currentNiche, username, title }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) { showToast(data.error, 'error'); return; }
+  _val('newGroupUsername', ''); _val('newGroupTitle', '');
+  showToast('Группа добавлена', 'info');
+  selectNicheTab(_currentNiche);
+  await loadGroupNiches();
+}
+
+async function toggleGroup(id, active) {
+  await fetch(`/api/settings/groups/${id}`, {
+    method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({active}),
+  });
+}
+
+async function deleteGroup(id) {
+  if (!confirm('Удалить группу?')) return;
+  await fetch(`/api/settings/groups/${id}`, { method: 'DELETE' });
+  selectNicheTab(_currentNiche);
+  await loadGroupNiches();
+}
+
+function promptNewNiche() {
+  const niche = prompt('Название новой ниши:');
+  if (!niche) return;
+  _currentNiche = niche.trim().toLowerCase();
+  _allNiches.push({ niche: _currentNiche, count: 0 });
+  renderNicheTabs();
+  const c = document.getElementById('groupsListContainer');
+  if (c) c.innerHTML = '<div class="empty-msg">Добавьте первую группу.</div>';
+}
+
+async function syncGroups() {
+  const resp = await fetch('/api/settings/groups/sync-config', { method: 'POST' });
+  const data = await resp.json();
+  showToast(`Sync: добавлено ${data.added} групп`, 'info');
+  await loadGroupNiches();
+}
+
+// ══════════════════════════════════════════════════
+//  TGSTAT
+// ══════════════════════════════════════════════════
+async function checkTgstat() {
+  try {
+    const resp = await fetch('/api/settings/tgstat/available');
+    const data = await resp.json();
+    const info = document.getElementById('tgstatStatus');
+    if (!info) return;
+    if (data.available) {
+      info.innerHTML = `<div style="display:flex;align-items:center;gap:.75rem;font-family:var(--mono);font-size:.78rem;color:var(--green)"><span>✓</span> TGStat API подключён</div>`;
+      info.style.borderColor = 'rgba(16,185,129,.2)';
+    } else {
+      info.innerHTML = `<div style="display:flex;align-items:center;gap:.75rem;font-family:var(--mono);font-size:.78rem;color:var(--yellow)"><span>⚠</span> TGStat Token не задан — добавьте в Конфигурации</div>`;
+      info.style.borderColor = 'rgba(245,158,11,.2)';
+    }
+  } catch (e) { console.warn('checkTgstat:', e); }
+}
+
+async function loadTgstatNiches() {
+  try {
+    const resp = await fetch('/api/settings/groups/niches');
+    const niches = await resp.json();
+    const sel = document.getElementById('tgstatNicheTarget');
+    if (sel) sel.innerHTML = '<option value="">Выберите нишу</option>' +
+      niches.map(n => `<option value="${escAttr(n.niche)}">${escHtml(n.niche)}</option>`).join('');
+  } catch (e) { console.warn('loadTgstatNiches:', e); }
+}
+
+async function tgstatSearch() {
+  const q = (_gval('tgstatQuery') || '').trim();
+  if (!q) { showToast('Введите запрос', 'error'); return; }
+  const el = document.getElementById('tgstatResults');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-family:var(--mono);font-size:.78rem;padding:.5rem">Поиск…</div>';
+  try {
+    const resp = await fetch(`/api/settings/tgstat/search?q=${encodeURIComponent(q)}&limit=15`);
+    const data = await resp.json();
+    if (!resp.ok) { el.innerHTML = `<div style="color:var(--red);font-family:var(--mono);font-size:.78rem">✗ ${escHtml(data.error || '')}</div>`; return; }
+    if (!data.results.length) { el.innerHTML = '<div class="empty-msg">Ничего не найдено</div>'; return; }
+    const nicheOptions = document.getElementById('tgstatNicheTarget')?.innerHTML || '';
+    el.innerHTML = data.results.map(ch => `
+      <div class="tgstat-card">
+        <div class="tgstat-info">
+          <div class="tgstat-name">${escHtml(ch.title)}</div>
+          <div class="tgstat-meta">@${escHtml(ch.username)} · ${ch.members_count ? fmtNum(ch.members_count) + ' подп.' : '—'} ${ch.category ? ' · ' + ch.category : ''}</div>
+        </div>
+        <div class="tgstat-add-form">
+          <select class="tgstat-niche-sel">${nicheOptions}</select>
+          <button class="btn btn-cyan btn-sm"
+                  onclick="addFromTgstat(this,'${escAttr(ch.username)}','${escAttr(ch.title)}',${ch.members_count || 0})">
+            + Добавить
+          </button>
+        </div>
+      </div>`).join('');
+  } catch (e) { el.innerHTML = `<div style="color:var(--red);font-family:var(--mono);font-size:.78rem">✗ ${escHtml(e.message)}</div>`; }
+}
+
+async function addFromTgstat(btn, username, title, members) {
+  const niche = btn.previousElementSibling?.value;
+  if (!niche) { showToast('Выберите нишу', 'error'); return; }
+  const resp = await fetch('/api/settings/tgstat/add', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ niche, username, title, members_count: members }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) { showToast(data.error, 'error'); return; }
+  btn.textContent = '✓'; btn.disabled = true; btn.style.color = 'var(--green)';
+  showToast(`@${username} добавлен в «${niche}»`, 'info');
+}
+
+// ══════════════════════════════════════════════════
+//  TEMPLATES
+// ══════════════════════════════════════════════════
+let _templates = [];
+
+async function loadTemplates() {
+  try {
+    const resp = await fetch('/api/settings/templates');
+    _templates = await resp.json();
+    renderTemplates();
+  } catch (e) { console.warn('loadTemplates:', e); }
+}
+
+async function loadTemplateNiches() {
+  try {
+    const resp = await fetch('/api/settings/groups/niches');
+    const niches = await resp.json();
+    const sel = document.getElementById('tplNiche');
+    if (sel) sel.innerHTML = '<option value="">Все ниши</option>' +
+      niches.map(n => `<option value="${escAttr(n.niche)}">${escHtml(n.niche)}</option>`).join('');
+  } catch (e) { console.warn('loadTemplateNiches:', e); }
+}
+
+function renderTemplates() {
+  const grid = document.getElementById('templateGrid');
+  if (!grid) return;
+  if (!_templates.length) {
+    grid.innerHTML = '<div class="empty-msg" style="grid-column:1/-1">Нет шаблонов. Создайте первый!</div>';
+    return;
+  }
+  grid.innerHTML = _templates.map(t => `
+    <div class="template-card">
+      <div class="t-used">${t.used_count}×</div>
+      <div class="t-name">${escHtml(t.name)}</div>
+      ${t.description ? `<div class="t-desc">${escHtml(t.description)}</div>` : ''}
+      <div class="t-meta">
+        ${t.niche ? `<span class="t-chip">📁 ${escHtml(t.niche)}</span>` : ''}
+        ${t.min_score != null ? `<span class="t-chip">score ≥ ${t.min_score}</span>` : ''}
+        ${t.keyword_filter ? `<span class="t-chip">🔍 ${escHtml(t.keyword_filter)}</span>` : ''}
+        ${t.date_range_days ? `<span class="t-chip">📅 ${t.date_range_days}д</span>` : ''}
+        <span class="t-chip">↕ ${escHtml(t.sort_by)}</span>
+      </div>
+      <div class="t-actions">
+        <button class="btn btn-cyan btn-sm" onclick="applyTemplate(${t.id})">▶ Применить</button>
+        <button class="btn btn-secondary btn-sm" onclick="editTemplate(${t.id})">✎</button>
+        <button class="btn btn-secondary btn-sm"
+                style="color:var(--red);border-color:rgba(239,68,68,.2)"
+                onclick="deleteTemplate(${t.id})">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function showTemplateForm(editData = null) {
+  const formEl = document.getElementById('templateForm');
+  if (!formEl) return;
+  document.getElementById('templateFormTitle').textContent = editData ? 'Редактировать' : 'Новый шаблон';
+  formEl.style.display = 'block';
+  ['tplName','tplDesc','tplKeyword','tplMinScore','tplDays'].forEach(id => _val(id, ''));
+  _val('tplNiche', ''); _val('tplSort', 'final_score'); _val('tplOrder', 'desc'); _val('tplEditId', '');
+  if (editData) {
+    _val('tplName',     editData.name            || '');
+    _val('tplDesc',     editData.description     || '');
+    _val('tplNiche',    editData.niche            || '');
+    _val('tplMinScore', editData.min_score != null ? editData.min_score : '');
+    _val('tplKeyword',  editData.keyword_filter  || '');
+    _val('tplDays',     editData.date_range_days || '');
+    _val('tplSort',     editData.sort_by         || 'final_score');
+    _val('tplOrder',    editData.sort_order      || 'desc');
+    _val('tplEditId',   editData.id);
+  }
+  formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function editTemplate(id) {
+  const t = _templates.find(t => t.id === id);
+  if (t) showTemplateForm(t);
+}
+function cancelTemplate() {
+  const el = document.getElementById('templateForm');
+  if (el) el.style.display = 'none';
+}
+
+async function saveTemplate() {
+  const name = (_gval('tplName') || '').trim();
+  if (!name) { showToast('Введите название', 'error'); return; }
+  const body = {
+    name,
+    description:     (_gval('tplDesc')     || '').trim() || null,
+    niche:           _gval('tplNiche')     || null,
+    min_score:       _gval('tplMinScore')  ? parseFloat(_gval('tplMinScore'))  : null,
+    keyword_filter:  (_gval('tplKeyword')  || '').trim() || null,
+    date_range_days: _gval('tplDays')      ? parseInt(_gval('tplDays'))        : null,
+    sort_by:         _gval('tplSort')      || 'final_score',
+    sort_order:      _gval('tplOrder')     || 'desc',
+  };
+  const editId = _gval('tplEditId');
+  const url    = editId ? `/api/settings/templates/${editId}` : '/api/settings/templates';
+  const method = editId ? 'PATCH' : 'POST';
+  const resp = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await resp.json();
+  if (!resp.ok) { showToast(data.error, 'error'); return; }
+  showToast(editId ? 'Шаблон обновлён' : 'Шаблон создан', 'info');
+  cancelTemplate();
+  await loadTemplates();
+}
+
+async function deleteTemplate(id) {
+  if (!confirm('Удалить шаблон?')) return;
+  await fetch(`/api/settings/templates/${id}`, { method: 'DELETE' });
+  await loadTemplates();
+}
+
+async function applyTemplate(id) {
+  const resp = await fetch(`/api/settings/templates/${id}/use`, { method: 'POST' });
+  const t = await resp.json();
+  const p = new URLSearchParams();
+  if (t.niche)             p.set('niche',     t.niche);
+  if (t.min_score != null) p.set('min_score', t.min_score);
+  if (t.keyword_filter)    p.set('keyword',   t.keyword_filter);
+  if (t.sort_by)           p.set('sort',      t.sort_by);
+  if (t.sort_order)        p.set('order',     t.sort_order);
+  if (t.date_range_days) {
+    const f = new Date();
+    f.setDate(f.getDate() - t.date_range_days);
+    p.set('date_from', f.toISOString().split('T')[0]);
+  }
+  window.location.href = `/leads?${p}`;
+}
+
+function exportTemplates() {
+  const link = document.createElement('a');
+  link.href = '/api/settings/templates/export';
+  link.click();
+  showToast('Скачиваем JSON…', 'info');
+}
+
+async function importTemplates(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  const resp = await fetch('/api/settings/templates/import', { method: 'POST', body: fd });
+  const data = await resp.json();
+  if (!resp.ok) { showToast(data.error, 'error'); return; }
+  showToast(`Импортировано: ${data.added}, пропущено: ${data.skipped}`, 'success');
+  input.value = '';
+  await loadTemplates();
+}
+
+// ══════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                          .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+function escAttr(str) { return String(str || '').replace(/'/g, "\\'"); }
+function fmtNum(n)    { return n >= 1000 ? (n / 1000).toFixed(0) + 'K' : n; }
+function _val(id, v)  { const el = document.getElementById(id); if (el) el.value = v !== undefined ? v : ''; }
+function _gval(id)    { const el = document.getElementById(id); return el ? el.value : ''; }
+function _setDisplay(id, v) { const el = document.getElementById(id); if (el) el.style.display = v; }
+
+// ══════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  loadConfig();
+  checkAuthStatus();
+});
+</script>
+{% endblock %}
