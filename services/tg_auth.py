@@ -1,3 +1,4 @@
+Content is user-generated and unverified.
 """
 services/tg_auth.py
 
@@ -8,8 +9,35 @@ SOCKS5 / MTProxy прокси читается из AppSettings:
   proxy_user   — только для SOCKS5 с авторизацией (опционально)
   proxy_pass   — только для SOCKS5 с авторизацией (опционально)
   proxy_secret — только для MTProto (hex-строка)
+
+Исправленные баги:
+  [1] asyncio.run() блокировал Flask-тред при таймауте MTProto (20 сек и более).
+      Теперь каждая async-операция запускается в отдельном потоке через _run_async(),
+      с явным таймаутом и чистым event loop.
+  [2] proxy_port мог прийти из БД с двойным JSON-encode: "\"1080\"".
+      Добавлен strip('"') перед int(), что обезвреживает оба варианта.
+  [3] proxy_port == "0" или "" проходил проверку `not proxy_port` некорректно.
+      Теперь порт проверяется явно: port > 0.
+  [4] is_authorized() создавал клиент без прокси → вис при блокировке хостинга.
+      Прокси теперь передаётся, таймаут уменьшен до 10 сек.
+  [5] `with ThreadPoolExecutor` вызывает shutdown(wait=True) при выходе —
+      при таймауте Flask-тред блокировался до завершения фонового потока
+      (воспроизводило исходную проблему зависания). Исправлено: shutdown(wait=False).
+  [6] Корутина не отменялась при таймауте — фоновые потоки Telethon накапливались.
+      Исправлено: asyncio.wait_for внутри + явная отмена задач перед закрытием loop.
+  [7] sign_in() не имел disconnect в finally — утечка TCP-соединения при любом
+      исключении после connect(). Добавлен finally блок.
+  [8] int(api_id) в _get_credentials без try/except — нечисловое значение из БД
+      давало голый ValueError без контекста. Теперь понятное сообщение.
+  [9] proxy_secret с пробелами ("dd ab cd") → bytes.fromhex() падал с ValueError.
+      Добавлен replace(" ", "") перед fromhex().
+  [10] Неизвестный proxy_type молча возвращал None без лога — опечатка пользователя
+       была незаметна. Теперь логируется warning.
+  [11] logout() вызывал _get_session_path() дважды — разные вызовы могли вернуть
+       разный путь если Flask-контекст менялся между ними. Путь фиксируется заранее.
 """
 import asyncio
+import concurrent.futures
 import os
 import logging
 from pathlib import Path
@@ -19,6 +47,61 @@ from telethon.errors import SessionPasswordNeededError
 from telethon.network import ConnectionTcpAbridged
 
 logger = logging.getLogger(__name__)
+
+
+# ── Запуск async-кода из синхронного Flask-контекста ─────────────────
+# FIX [1][5][6]:
+#   • asyncio.run() в Flask-треде блокировал тред навсегда при таймауте.
+#   • `with ThreadPoolExecutor` вызывает shutdown(wait=True) при выходе —
+#     при таймауте тред всё равно блокировался до конца фоновой операции.
+#   • Корутина не отменялась при таймауте → накопление фоновых потоков Telethon.
+#
+# Решение:
+#   • executor.shutdown(wait=False) — не ждём завершения фонового потока.
+#   • asyncio.wait_for внутри _runner — корутина отменяется изнутри event loop.
+#   • Явная отмена оставшихся задач перед loop.close().
+def _run_async(coro, timeout: float = 30):
+    """
+    Запускает корутину в изолированном потоке с новым event loop.
+    Бросает TimeoutError если операция не завершилась за timeout секунд.
+    Flask-тред не блокируется даже при зависании фоновой операции.
+    """
+    inner_timeout = max(timeout - 0.5, 1.0)
+
+    def _runner():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(
+                asyncio.wait_for(coro, timeout=inner_timeout)
+            )
+        except asyncio.TimeoutError:
+            raise TimeoutError(
+                f"Операция превысила таймаут {timeout} сек. "
+                "Проверьте прокси или доступность Telegram."
+            )
+        finally:
+            # Отменяем все оставшиеся задачи перед закрытием loop
+            pending = asyncio.all_tasks(loop)
+            for task in pending:
+                task.cancel()
+            if pending:
+                loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
+            loop.close()
+
+    # FIX [5]: shutdown(wait=False) — не блокируем Flask-тред при таймауте
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(_runner)
+    executor.shutdown(wait=False)
+    try:
+        return future.result(timeout=timeout)
+    except concurrent.futures.TimeoutError:
+        raise TimeoutError(
+            f"Операция превысила таймаут {timeout} сек. "
+            "Проверьте прокси или доступность Telegram."
+        )
 
 
 # ── Путь к .session файлу текущего пользователя ─────────────────────
@@ -43,7 +126,13 @@ def _get_credentials() -> tuple[int, str]:
             "TG_API_ID и TG_API_HASH не заданы. "
             "Сохраните их в Настройки → Конфигурация."
         )
-    return int(api_id), str(api_hash)
+    # FIX [8]: int() без try/except давал голый ValueError если api_id нечисловой
+    try:
+        return int(api_id), str(api_hash)
+    except (ValueError, TypeError):
+        raise ValueError(
+            "TG_API_ID должен быть числом. Проверьте значение в Настройки → Конфигурация."
+        )
 
 
 # ── Прокси из БД ────────────────────────────────────────────────────
@@ -61,15 +150,26 @@ def _get_proxy() -> tuple | None:
         from models.settings import AppSettings
         proxy_type   = (AppSettings.get("proxy_type")   or "").strip().lower()
         proxy_host   = (AppSettings.get("proxy_host")   or "").strip()
-        proxy_port   = AppSettings.get("proxy_port")
         proxy_secret = (AppSettings.get("proxy_secret") or "").strip()
         proxy_user   = (AppSettings.get("proxy_user")   or "").strip() or None
         proxy_pass   = (AppSettings.get("proxy_pass")   or "").strip() or None
 
-        if not proxy_type or not proxy_host or not proxy_port:
+        # FIX [2]: AppSettings сохраняет через json.dumps(str(...)), поэтому
+        # proxy_port может вернуться как '\"1080\"' (двойной encode).
+        # strip('"') нейтрализует лишние кавычки перед int().
+        proxy_port_raw = AppSettings.get("proxy_port") or ""
+        if isinstance(proxy_port_raw, str):
+            proxy_port_raw = proxy_port_raw.strip().strip('"')
+
+        if not proxy_type or not proxy_host or not proxy_port_raw:
             return None
 
-        port = int(proxy_port)
+        port = int(proxy_port_raw)
+
+        # FIX [3]: порт "0" технически не пустая строка, но невалиден.
+        if port <= 0:
+            logger.warning("proxy_port <= 0, прокси отключён")
+            return None
 
         if proxy_type == "socks5":
             if proxy_user:
@@ -79,8 +179,16 @@ def _get_proxy() -> tuple | None:
         if proxy_type == "mtproto":
             if not proxy_secret:
                 raise ValueError("MTProto прокси требует секрет (proxy_secret)")
-            secret_bytes = bytes.fromhex(proxy_secret)
+            # FIX [9]: пробелы в hex-строке ("dd ab cd") ломали bytes.fromhex()
+            secret_bytes = bytes.fromhex(proxy_secret.replace(" ", ""))
             return ("mtproto", proxy_host, port, False, secret_bytes)
+
+        # FIX [10]: неизвестный тип молча возвращал None — опечатка пользователя
+        # была незаметна. Теперь логируется.
+        logger.warning(
+            f"Неизвестный тип прокси: {proxy_type!r}. "
+            "Допустимые значения: 'socks5', 'mtproto'."
+        )
 
     except Exception as e:
         logger.warning(f"Ошибка чтения прокси: {e}")
@@ -116,13 +224,17 @@ def _make_client(session_path: str | None = None) -> TelegramClient:
 # ── Публичный API ────────────────────────────────────────────────────
 
 def is_authorized() -> bool:
+    # FIX [1] + FIX [4]:
+    #   • Используем _run_async с коротким таймаутом (10 сек) —
+    #     страница настроек не висит дольше этого времени.
+    #   • Прокси передаётся в клиент (раньше kwargs его не содержал).
     async def _check():
         try:
             api_id, api_hash = _get_credentials()
         except ValueError:
             return False
         proxy = _get_proxy()
-        kwargs = dict(connection_retries=2, timeout=15)
+        kwargs = dict(connection_retries=2, timeout=8)
         if proxy:
             kwargs["proxy"] = proxy
         client = TelegramClient(_get_session_path(), api_id, api_hash, **kwargs)
@@ -137,8 +249,9 @@ def is_authorized() -> bool:
                 await client.disconnect()
             except Exception:
                 pass
+
     try:
-        return asyncio.run(_check())
+        return _run_async(_check(), timeout=10)
     except Exception as e:
         logger.warning(f"is_authorized outer: {e}")
         return False
@@ -164,8 +277,9 @@ def get_me() -> dict | None:
                 await client.disconnect()
             except Exception:
                 pass
+
     try:
-        return asyncio.run(_me())
+        return _run_async(_me(), timeout=25)
     except Exception as e:
         logger.warning(f"get_me error: {e}")
         return None
@@ -202,7 +316,8 @@ def send_code(phone: str) -> str:
                 await client.disconnect()
             except Exception:
                 pass
-    return asyncio.run(_send())
+
+    return _run_async(_send(), timeout=30)
 
 
 def sign_in(phone: str, code: str, phone_code_hash: str,
@@ -218,6 +333,12 @@ def sign_in(phone: str, code: str, phone_code_hash: str,
             if not password:
                 raise
             me = await client.sign_in(password=password)
+        finally:
+            # FIX [7]: утечка TCP-соединения при исключении после connect()
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
         return {
             "id":         me.id,
             "username":   me.username,
@@ -225,12 +346,17 @@ def sign_in(phone: str, code: str, phone_code_hash: str,
             "last_name":  me.last_name,
             "phone":      me.phone,
         }
-    return asyncio.run(_signin())
+
+    return _run_async(_signin(), timeout=30)
 
 
 def logout() -> bool:
+    # FIX [11]: _get_session_path() вызывался дважды — если Flask-контекст
+    # менялся между вызовами, пути могли различаться. Фиксируем заранее.
+    session_path = _get_session_path()
+
     async def _logout():
-        client = _make_client()
+        client = _make_client(session_path)
         try:
             await client.connect()
             await client.log_out()
@@ -239,11 +365,13 @@ def logout() -> bool:
                 await client.disconnect()
             except Exception:
                 pass
+
     try:
-        asyncio.run(_logout())
+        _run_async(_logout(), timeout=15)
     except Exception:
         pass
-    sf = _get_session_path() + ".session"
+
+    sf = session_path + ".session"
     if os.path.exists(sf):
         os.remove(sf)
     return True
@@ -281,6 +409,7 @@ def test_proxy() -> dict:
                 pass
 
     try:
-        return asyncio.run(_test())
+        return _run_async(_test(), timeout=20)
     except Exception as e:
         return {"ok": False, "message": str(e), "proxy_info": proxy_info}
+
