@@ -1,4 +1,4 @@
-Content is user-generated and unverified.
+
 """
 services/tg_auth.py
 
